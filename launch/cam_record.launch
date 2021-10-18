@@ -1,0 +1,14 @@
+<launch>
+    <arg name="camera_name" default="c920" />
+    <arg name="file_name" default="default_name" />
+    <arg name="path" default="$(find continuum_mocap)/bags" />
+    <arg name="duration" default="90"/> <!-- seconds -->
+
+    <include file="$(find continuum_mocap)/launch/$(arg camera_name)_cam_online.launch" pass_all_args="true"/>
+
+    <node pkg="rosbag" type="record" name="rosbag_recording"
+        output="screen"
+        args="$(arg camera_name)/image_raw/compressed $(arg camera_name)/camera_info -o $(arg path)/ --duration=$(arg duration)"
+    />
+
+</launch>
