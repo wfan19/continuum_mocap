@@ -14,7 +14,7 @@
   -->
   <arg name="tag_family" default="0"/>
   <node pkg="tagslam" type="sync_and_detect_node" name="sync_and_detect"
-    output="$(arg output)" clear_params="True">
+    output="$(arg output)" clear_params="True" required="True">
     <rosparam param="image_topics">
       ["c920/image_raw/compressed"]
     </rosparam>
