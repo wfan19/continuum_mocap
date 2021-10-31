@@ -6,9 +6,18 @@
 
     <include file="$(find continuum_mocap)/launch/$(arg camera_name)_cam_online.launch" pass_all_args="true"/>
 
-    <node pkg="rosbag" type="record" name="rosbag_recording"
-        output="screen"
-        args="$(arg camera_name)/image_raw/compressed $(arg camera_name)/camera_info -o $(arg path)/ --duration=$(arg duration)"
-    />
+    <group if="$(eval file_name == 'default_name')">
+        <node pkg="rosbag" type="record" name="rosbag_recording"
+            output="screen"
+            args="$(arg camera_name)/image_raw/compressed $(arg camera_name)/camera_info -o $(arg path)/ --duration=$(arg duration)"
+        />
+    </group>
+
+    <group unless="$(eval file_name == 'default_name')">
+        <node pkg="rosbag" type="record" name="rosbag_recording"
+            output="screen"
+            args="$(arg camera_name)/image_raw/compressed $(arg camera_name)/camera_info -o $(arg path)/$(arg file_name) --duration=$(arg duration)"
+        />
+    </group>
 
 </launch>
