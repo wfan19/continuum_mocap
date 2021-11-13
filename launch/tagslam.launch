@@ -3,9 +3,10 @@
     <arg name="config_dir" default="$(find continuum_mocap)/config"/>
     <arg name="outbag" default="$(arg bag).tagslam.bag" />
 
-    <arg name="tagslam_config_file" default="$(arg config_dir)/tagslam.yaml"/>
-    <arg name="calibration_file" default="$(arg config_dir)/cameras.yaml"/>
-    <arg name="camera_poses_file" default="$(arg config_dir)/camera_poses.yaml"/>
+    <arg name="tagslam_config_file" default="tagslam.yaml"/>
+    <arg name="calibration_file" default="cameras.yaml"/>
+    <arg name="camera_poses_file" default="camera_poses.yaml"/>
+    <arg name="bodies_file" default="$(arg tagslam_config_file)" />
 
     <arg name="run_online" default="false"/>
     <arg name="max_number_of_frames" default="1000000"/>
@@ -15,9 +16,11 @@
     <node pkg="tagslam" type="tagslam_node" name="tagslam" clear_params="true"
         output="screen">
         <!-- Load configuration files -->
-        <rosparam param="cameras" command="load" file="$(arg calibration_file)"/>
-        <rosparam param="tagslam_config" command="load" file="$(arg tagslam_config_file)"/>
-        <rosparam param="camera_poses" command="load" file="$(arg camera_poses_file)"/>
+        <rosparam param="cameras" command="load" file="$(arg config_dir)/$(arg calibration_file)"/>
+        <rosparam param="tagslam_config" command="load" file="$(arg config_dir)/$(arg tagslam_config_file)"/>
+        <rosparam param="tagslam_config" command="load" file="$(arg config_dir)/$(arg bodies_file)" />
+        <rosparam param="camera_poses" command="load" file="$(arg config_dir)/$(arg camera_poses_file)"/>
+        <param name="exit_when_done" value="true" />
 
         <!-- Load other parameters -->
         <param name="bag_start_time" value="$(arg start_time)"/>
