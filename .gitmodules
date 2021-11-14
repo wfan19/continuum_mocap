@@ -1,0 +1,3 @@
+[submodule "matlab/include/continuum-solver"]
+	path = matlab/include/continuum-solver
+	url = git@github.com:wfan19/continuum-solver.git
