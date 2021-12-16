@@ -180,9 +180,6 @@ bodies:
               x: 0.005
               y: 0.005
               z: 0.005
-        - id: 7
-        - id: 8
-        - id: 9
 
   - rig:
       is_static: false

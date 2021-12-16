@@ -9,6 +9,7 @@
     <group if="$(eval file_name == 'default_name')">
         <node pkg="rosbag" type="record" name="rosbag_recording"
             output="screen"
+            required="True" 
             args="$(arg camera_name)/image_raw/compressed $(arg camera_name)/camera_info -o $(arg path)/ --duration=$(arg duration)"
         />
     </group>
@@ -16,6 +17,7 @@
     <group unless="$(eval file_name == 'default_name')">
         <node pkg="rosbag" type="record" name="rosbag_recording"
             output="screen"
+            required="True"
             args="$(arg camera_name)/image_raw/compressed $(arg camera_name)/camera_info -o $(arg path)/$(arg file_name) --duration=$(arg duration)"
         />
     </group>

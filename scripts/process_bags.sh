@@ -51,7 +51,14 @@ done
 
 if [ -z "$BAG_DIR" ]; then
     echo "Directory not defined"
-    exit 0
+    echo "`base_name` <bag_dir>: Process camera-feed bag files from <bag_dir> with tagslam."
+	echo "--mode=: 'label' or 'localize'"
+	echo "--out=: Desired output directory (full path?)"
+	echo "--searh=: Search string for selecting bags to process from the specified directory"
+	echo "--bodies=: File name for the yaml rosparam file containing the tag and body specifications"
+	echo "--full: Print full file names"
+	echo "--dry: Dry run: List out file names to prcoses but not actually process them"
+	echo "--verbose: Print full tagslam processing output"
 fi
 
 if [[ "$MODE" == "label" ]]; then
