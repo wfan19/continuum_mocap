@@ -38,5 +38,9 @@ plotTransforms(t_tforms, quat_tforms, plot_options);
 % to Axis.Children so we can grab the Group Handle (gh).
 gh_tform = ax.Children(1);
 
+if length(g_tforms{1}) == 3
+    view(ax, [0, 90]);
+end
+
 end
 
