@@ -112,6 +112,44 @@ classdef Tag < handle & matlab.mixin.Copyable
             grid on
             axis equal
         end
+
+        % Getter and setter functions, so that the group and pose matrix
+        % size always match
+        function set.group(obj, group)
+            obj.group = group;
+
+            if all(size(obj.g_pose) ~= group.mat_size)
+                if isa(group, "SE3")
+                    % Elseif the pose matrix is currently in SE2, bring it up
+                    % to SE3.
+                    v_SE2 = SE2.vee(obj.g_pose);
+                    R_SE3 = eul2rotm('zyx', [v_SE2(3), 0, 0]);
+                    t_SE3 = [v_SE2(:); 0];
+                    
+                    obj.g_pose = SE3.hat(R_SE3, t_SE3);
+                elseif isa(group, "SE2")
+                    % If the pose matrix is currently in SE3, flatten it to SE2
+                    t_xy = obj.g_pose(4, 1:2);
+                    eul = rotm2eul(R(1:3, 1:3), "zyx");
+                    theta = eul(1);
+                    
+                    obj.g_pose = SE2.hat([t_xy(:); theta]);
+                else
+                    warning("Tag: Possibly mismatched group dimensions and pose matrix size")
+                end
+            end
+        end
+
+        function set.g_pose(obj, g_pose)
+            obj.g_pose = g_pose;
+            if all(obj.group.mat_size ~= size(g_pose))
+                if all(size(g_pose) == SE2.mat_size)
+                    obj.group = SE2;
+                elseif all(size(g_pose) == SE3.mat_size)
+                    obj.group = SE3;
+                end
+            end
+        end
     end
 end
 

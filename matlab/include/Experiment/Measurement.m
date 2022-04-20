@@ -10,6 +10,7 @@ classdef Measurement < handle & matlab.mixin.Copyable
 
         % Experiment Setup Information?
         v_pressure
+        label
 
         tags_meas
         tags_fit
@@ -30,15 +31,15 @@ classdef Measurement < handle & matlab.mixin.Copyable
     end
     
     methods
-        function obj = Measurement(bag_path, v_pressure, base_tag, tags, arm_obj, options)
+        function obj = Measurement(bag_path, v_pressure, base_tag, tags, arm_obj, g_tag_offset, options)
             arguments
                 bag_path string
                 v_pressure double
                 base_tag Tag
                 tags Tag
                 arm_obj Arm
+                g_tag_offset = []
                 options.group = SE3()
-                options.g_tag_offset = [];
             end
             % Create Measurement object and extract tag poses
             obj.bag_path = bag_path;
@@ -46,10 +47,10 @@ classdef Measurement < handle & matlab.mixin.Copyable
             obj.tags_meas = copy(tags);
             obj.arm_obj = arm_obj;
             obj.group = options.group;
-            if isempty(options.g_tag_offset)
+            if isempty(g_tag_offset)
                 obj.g_tag_offset = eye(obj.group.mat_size);
             else
-                obj.g_tag_offset = options.g_tag_offset;
+                obj.g_tag_offset = g_tag_offset;
             end
 
             bag_obj = rosbag(bag_path);
@@ -185,7 +186,13 @@ classdef Measurement < handle & matlab.mixin.Copyable
             obj.tags_fit = tags_fit;
         end
 
-        function plot_measurement(obj, ax)
+        function plot_measurement(obj, ax, plot_tags)
+            arguments
+                obj
+                ax
+                plot_tags = true;
+            end
+
             grid on
             axis equal
 
@@ -231,8 +238,10 @@ classdef Measurement < handle & matlab.mixin.Copyable
             fit_arm.update_arm(v_l, obj.h_o_fit);
 
             % Plot the tags
-            obj.gh_tags_meas = obj.tags_meas.plot_tags(ax);
-            obj.gh_tags_fit = obj.tags_fit.plot_tags(ax, "green");
+            if plot_tags
+                obj.gh_tags_meas = obj.tags_meas.plot_tags(ax);
+                obj.gh_tags_fit = obj.tags_fit.plot_tags(ax, "green");
+            end
         end
     end
 end
