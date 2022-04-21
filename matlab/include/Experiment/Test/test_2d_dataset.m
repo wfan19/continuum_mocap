@@ -28,14 +28,7 @@ arm_obj = Arm2D(g_o, g_o_muscles, l_0, 'plot_unstrained', false);
 
 g_tag_offset = SE2.hat([0 0 -pi/2]);
 
-dataset_options = struct();
-dataset_options.group = SE2();
-dataset_options.g_tag_offset = g_tag_offset;
-dataset_obj = Dataset(test_project_path, tags(1), tags, arm_obj, @parse_bag, g_tag_offset, "group", SE2);
 
-function [v_muscle_pressures, label] = parse_bag(bag_name)
-    pressure = double(string(extractBetween(bag_name, "-", "psi")));
-
-    v_muscle_pressures = [pressure, 0];
-    label = sprintf("%dpsi", pressure);
-end
+dataset_params = DatasetParams("Planar 2 Inch (Old)", SE2, arm_obj, tags(1), tags, g_tag_offset);
+dataset_params.f_parse_bag = @(bag_name) DatasetParams.parse_bag_generic(bag_name, 2, 1);
+dataset_obj = Dataset(test_project_path, dataset_params);

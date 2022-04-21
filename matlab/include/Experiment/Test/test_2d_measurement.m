@@ -31,8 +31,10 @@ arm_obj = Arm2D(g_o, g_o_muscles, l_0, 'plot_unstrained', false);
 
 g_tag_offset = SE2.hat([0 0 -pi/2]);
 
+dataset_params = DatasetParams("planar_2muscle", SE2, arm_obj, tags(1), tags, g_tag_offset);
+
 % Create Measurement object
-obj_measurement = Measurement(test_bag_path, [0, 15], tags(1), tags, arm_obj, g_tag_offset, 'group', SE2());
+obj_measurement = Measurement(test_bag_path, [0, 15], dataset_params);
 fig = figure();
 obj_measurement.plot_measurement(axes);
 title("Model (Dashed) vs Measured (Solid)");
