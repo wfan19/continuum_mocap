@@ -1,7 +1,4 @@
-bags = Dataset.get_dataset_bags("feb_2022/spatial_3muscle");
-test_bag = bags(1);
-test_bag_path = fullfile(test_bag.folder, test_bag.name);
-fprintf("Testing with bag %s\nIn %s\n", test_bag.name, test_bag.folder)
+project_dir_name = "feb_2022/spatial_3muscle";
 %% Parameterize tag locations
 % ids of tags along the arm (and the order that we will store them in)
 experiment_tags = [6 7 8 15 10 11 14 9]; % Tags 6 to 9 
@@ -48,16 +45,13 @@ g_muscles = cellfun(@(g_muscle) g_muscle_shift * g_muscle, g_muscles, 'uniformou
 arm_obj = Arm3D(g_o, g_muscles, contraction_fit(0), 'plot_unstrained', false);
 arm_obj.n_spacers = 8;
 tags = Tag(experiment_tags, repmat({eye(4)}, size(experiment_tags)), tag_muscle_ids, t_tags);
+base_tag = tags([tags.id] == base_tag_id);
 
 g_tag_offset = SE3.hat(eul2rotm([-pi/2, 0, 0], 'zyx'), [0; 0; 0.788 * 0.0254]);
-g_global_offset = SE3.hat(eul2rotm([0, 0, 0], 'zyx'), zeros(3, 1));
+g_global_offset = SE3.hat(eul2rotm([0, deg2rad(0), 0], 'zyx'), zeros(3, 1));
 
-dataset_params = DatasetParams("spatial_3muscle", SE3, arm_obj, tags(5), tags, g_tag_offset);
+dataset_params = DatasetParams("spatial_3muscle", SE3, arm_obj, base_tag, tags, g_tag_offset);
+dataset_params.f_parse_bag = @(bag_name) DatasetParams.parse_bag_generic(bag_name, 3, 1);
 dataset_params.g_global_offset = g_global_offset;
 
-% Create Measurement object
-obj_measurement = Measurement(test_bag_path, [0, 0, 0], dataset_params);
-fig = figure();
-obj_measurement.plot_measurement(axes);
-view([-23.3684   12.3360]);
-title("Model (Dashed) vs Measured (Solid)");
+dataset_obj = Dataset(project_dir_name, dataset_params);

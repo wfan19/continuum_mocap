@@ -65,7 +65,7 @@ classdef Tag < handle & matlab.mixin.Copyable
             
             arguments
                 obj Tag
-                ax = gca()
+                ax = axes(figure())
                 color = "red";
                 size = 0.03;
                 mesh_file = "tf_frame.stl";

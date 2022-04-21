@@ -12,61 +12,48 @@ classdef Dataset < handle & matlab.mixin.Copyable
     end
     
     methods
-        % TODO: Refactor such that parameters are passed with a
-        % DatasetParams object
-        function obj = Dataset(dataset_name, base_tag, tags, arm_obj, f_parse_bag, g_tag_offset, options)
+        function obj = Dataset(dataset_path, dataset_params, options)
             arguments
-                dataset_name string
-                base_tag
-                tags
-                arm_obj
-                f_parse_bag = @() deal(zeros(size(arm_obj.muscles)), "default")
-                g_tag_offset = []
+                dataset_path
+                dataset_params
                 options.project_root = "~/tagslam_ws/tagslam_root/src/continuum_mocap";
-                options.group = SE3()
             end
             obj.project_root = options.project_root;
-            obj.group = options.group;
+            obj.group = dataset_params.group;
             obj.tab_measurements = table();
 
-            obj = obj.add_dataset(dataset_name, base_tag, tags, arm_obj, f_parse_bag, g_tag_offset);
+            obj = obj.add_dataset(dataset_path, dataset_params);
         end
 
-        function obj = add_dataset(obj, dataset_name, base_tag, tags, arm_obj, f_parse_bag, g_tag_offset)
+        function obj = add_dataset(obj, dataset_path, params)
             arguments
                 obj
-                dataset_name string
-                base_tag
-                tags
-                arm_obj
-                f_parse_bag = @() deal(zeros(size(arm_obj.muscles)), "default")
-                g_tag_offset = []
+                dataset_path string
+                params DatasetParams
             end
             %%% Retrieve Rosbag files of each Measurement in the Dataset
             % <Read rosbag here - Resource Acquisition is Initialization>
             % - Find all bag files in bags dir corresponding to the desired experiment
             % that is specified by `experiment_name`
-            dataset_bags = obj.get_dataset_bags(dataset_name, "project_root", obj.project_root);
+            dataset_bags = obj.get_dataset_bags(dataset_path, "project_root", obj.project_root);
             
             dataset_measurements = Measurement.empty(0, length(dataset_bags));
 
             % For each retrieved bag file object, create a Measurement
             % object and initialize them
             for i = 1 : length(dataset_bags)
+                fprintf("Loading bag %s\n", dataset_bags(i).name);
+
                 % Create measurement object
                 measurement_bag_path = fullfile(dataset_bags(i).folder, dataset_bags(i).name);
 
                 % Determine muscle pressures and measurement "label" based
                 % on the bag file's name
-                [v_pressure, measurement_label] = f_parse_bag(dataset_bags(i).name);
+                [v_pressure, measurement_label] = params.f_parse_bag(dataset_bags(i).name);
                 dataset_measurements(i) = Measurement( ...
                     measurement_bag_path, ...
                     v_pressure, ...
-                    base_tag, ...
-                    tags, ...
-                    arm_obj, ...
-                    g_tag_offset, ...
-                    "group", obj.group ...
+                    params ...
                 );
                 dataset_measurements(i).label = measurement_label;
             end
@@ -83,6 +70,7 @@ classdef Dataset < handle & matlab.mixin.Copyable
             );
             obj.tab_measurements = [obj.tab_measurements; dataset_tab_measurements];
         end
+    
     end
 
     methods(Static)
