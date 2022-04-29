@@ -192,6 +192,10 @@ classdef Measurement < handle & matlab.mixin.Copyable
                 plot_tags = true;
             end
 
+            if isa(ax, "matlab.ui.Figure")
+                ax = axes(ax);
+            end
+
             grid on
             axis equal
 

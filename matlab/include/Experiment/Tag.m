@@ -70,6 +70,10 @@ classdef Tag < handle & matlab.mixin.Copyable
                 size = 0.03;
                 mesh_file = "tf_frame.stl";
             end
+
+            if isa(ax, "matlab.ui.Figure")
+                ax = axes(ax);
+            end
             
             if isa(obj(1).group, "SE2")
                 % SE2
