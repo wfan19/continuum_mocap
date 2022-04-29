@@ -14,7 +14,7 @@ for i in "$@"; do
 			;;
 
 		--out=*)
-			OUTPUT_DIR="${i#*=}"
+			OVERRIDE_OUTPUT_DIR="${i#*=}"
 			;;
 
 		--dry)
@@ -44,14 +44,14 @@ for i in "$@"; do
 
 		*)
 			# Default parameter is the bag directory
-			BAG_DIR="${i}"
+			PROJECT_DIR="${i}"
 			;;
 	esac
 done
 
-if [ -z "$BAG_DIR" ]; then
+if [ -z "$PROJECT_DIR" ]; then
     echo "Directory not defined"
-    echo "`base_name` <bag_dir>: Process camera-feed bag files from <bag_dir> with tagslam."
+    echo "`base_name` <project_dir>: Process camera-feed bag files from project directory <project_dir> with tagslam."
 	echo "--mode=: 'label' or 'localize'"
 	echo "--out=: Desired output directory (full path?)"
 	echo "--searh=: Search string for selecting bags to process from the specified directory"
@@ -63,12 +63,25 @@ fi
 
 if [[ "$MODE" == "label" ]]; then
 	MODE_STR="labeled"
+    BAG_DIR="$PROJECT_DIR/original"
+    OUTPUT_DIR="$PROJECT_DIR/labeled"
 elif [[ "$MODE" == "localize" ]] && ! [[ -z "$BODIES_FILE" ]]; then
 	MODE_STR="localized"
+    BAG_DIR="$PROJECT_DIR/labeled"
+    OUTPUT_DIR="$PROJECT_DIR/localized"
 else
 	echo "Mode not defined or BODIES_FILE not defined"
 	exit 0
 fi
+
+echo $BAG_DIR
+
+if [ $OVERRIDE_OUTPUT_DIR ]; then
+    OUTPUT_DIR=$OVERRIDE_OUTPUT_DIR
+    echo "Overriding output directory"
+fi
+
+echo $OUTPUT_DIR
 
 tput setaf 2
 tput bold
