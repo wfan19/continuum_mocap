@@ -9,6 +9,8 @@ classdef Dataset < handle & matlab.mixin.Copyable
         
         measurements
         tab_measurements
+
+        dataset_params
     end
     
     methods
@@ -21,6 +23,7 @@ classdef Dataset < handle & matlab.mixin.Copyable
             obj.project_root = options.project_root;
             obj.group = dataset_params.group;
             obj.tab_measurements = table();
+            obj.dataset_params = copy(dataset_params);
 
             obj = obj.add_dataset(dataset_path, dataset_params);
         end
@@ -69,6 +72,47 @@ classdef Dataset < handle & matlab.mixin.Copyable
                 'VariableNames',table_variable_names ...
             );
             obj.tab_measurements = [obj.tab_measurements; dataset_tab_measurements];
+        end
+    
+        % TODO: Implement allowing color choices and default blue/red color
+        % scheme
+        function obj = plot_dataset_curvature(obj, ax, muscle_pressurized, color)
+            arguments
+                obj Dataset
+                ax = axes(figure())
+                muscle_pressurized = 0
+                color = ""
+            end
+
+            if isa(obj.group, "SE2")
+                f_curvature = @(mat_h_o) abs(mat_h_o(:, 3));
+            elseif isa(obj.group, "SE3")
+                f_curvature = @(mat_h_o) vecnorm(mat_h_o(:, 4:6)')';
+            end
+
+            if muscle_pressurized == 0 % Find default muscle to pressurize based on tab_meas v_pressure
+                [~, muscle_pressurized] = max(std(obj.tab_measurements.v_pressure));
+            end
+            
+            hold(ax, 'on')
+            plot( ...
+                obj.tab_measurements.v_pressure(:, muscle_pressurized), ...
+                f_curvature(obj.tab_measurements.h_o_fit), ...
+                "bx", "Linewidth", 3 ...
+            )
+            
+            plot( ...
+                obj.tab_measurements.v_pressure(:, muscle_pressurized), ...
+                f_curvature(obj.tab_measurements.h_o_model), ...
+                "r:", "Linewidth", 3 ...
+            )
+
+            hold(ax, 'off')
+            legend(["Experiment", "Model"], 'location', 'southeast')
+            title(obj.dataset_params.dataset_name + ": Pressure vs Curvature")
+            xlabel("Pressure (psi)")
+            ylabel("Curvature (1/m)")
+            grid on
         end
     
     end

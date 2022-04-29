@@ -1,4 +1,4 @@
-classdef DatasetParams
+classdef DatasetParams < matlab.mixin.Copyable
     properties
         group
         arm_obj
@@ -19,8 +19,8 @@ classdef DatasetParams
                 dataset_name
                 group
                 arm_obj
-                base_tag
-                tags
+                base_tag = Tag()
+                tags = Tag()
                 g_tag_offset = []
             end
 
@@ -51,6 +51,20 @@ classdef DatasetParams
             v_muscle_pressures = v_muscle_pressures * pressure;
 
             label = sprintf("%dpsi", pressure);
+        end
+    end
+
+    % Copy constructor
+    methods (Access = protected)
+        % Copy constructor
+        % Inherited from matlab.mixin.Copyable
+        function cp = copyElement(obj)
+            % Regular copy of all elements
+            cp = copyElement@matlab.mixin.Copyable(obj);
+            
+            % Apply copy cstor for all handle children objects
+            cp.arm_obj = copy(obj.arm_obj);
+            cp.tags = copy(obj.tags);
         end
     end
 end
