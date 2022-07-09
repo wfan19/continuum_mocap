@@ -2,6 +2,9 @@ classdef Measurement < handle & matlab.mixin.Copyable
     %CAPTURE A "Measurement" is a single "experiment measurement" - a capturing
     %of the poses of Apriltags attached to a manipulator inflated to a
     %certain pressure.
+    %
+    % Constructor: Measurement(path, v_pressure, dataset_params)
+    %
     
     properties
         dataset_params
@@ -16,8 +19,6 @@ classdef Measurement < handle & matlab.mixin.Copyable
         tags_fit
         tags_removed
 
-        f_contraction_model = @contraction_fit_poly;
-
         % ??
         h_o_fit
         h_o_model
@@ -31,12 +32,15 @@ classdef Measurement < handle & matlab.mixin.Copyable
     methods
         function obj = Measurement(bag_path, v_pressure, dataset_params)
             arguments
-                bag_path
-                v_pressure double
-                dataset_params DatasetParams
+                bag_path string = "default"
+                v_pressure = "default"
+                dataset_params = "default"
             end
             % Create Measurement object and extract tag poses
             obj.bag_path = bag_path;
+            if strcmp(bag_path, "default")
+                return
+            end
             obj.v_pressure = v_pressure(:);
             obj.tags_meas = copy(dataset_params.tags);
             obj.dataset_params = dataset_params;
@@ -44,14 +48,19 @@ classdef Measurement < handle & matlab.mixin.Copyable
             bag_obj = rosbag(bag_path);
 
             obj.tags_removed = [];
-            
+
+            f_detect_tag = @(id) any(bag_obj.AvailableFrames == sprintf("tag_%d", id));
+            if ~f_detect_tag(dataset_params.base_tag.id)
+                error("Measurement:MissingBaseTag", "Base tag TF frame missing!!")
+            end
+
             % Read tags poses from bag object here
             for i = 1 : length(dataset_params.tags)
                 id_tag = dataset_params.tags(i).id;
 
                 % Make sure that the tag we're looking for has an existing
                 % transformation in the TF tree
-                if ~any(bag_obj.AvailableFrames == sprintf("tag_%d", id_tag))
+                if ~f_detect_tag(id_tag)
                     warning("Tag with id %d not found in list of available frames, removing from measurement", id_tag)
                     
                     obj.tags_removed(end + 1) = i;
@@ -100,6 +109,15 @@ classdef Measurement < handle & matlab.mixin.Copyable
                 dataset_params.arm_obj.muscles(dataset_params.base_tag.muscle_id).g_0 * ...
                 dataset_params.g_tag_offset * ...
                 inv(dataset_params.base_tag.g_pose);
+
+            base_tag_muscle_id = dataset_params.base_tag.muscle_id;
+            base_tag_muscle = dataset_params.arm_obj.muscles(base_tag_muscle_id);
+            g_base_tag_expected = base_tag_muscle.g_0 * ...
+                obj.dataset_params.group.algebra.expm(dataset_params.arm_obj.muscle_o.h_tilde * dataset_params.base_tag.t);
+            g_base_tag_measured = obj.tags_meas([obj.tags_meas.id] == dataset_params.base_tag.id).g_pose;
+
+            g_alignment_transform = ...
+                g_base_tag_expected * dataset_params.g_tag_offset * inv(g_base_tag_measured);
 
             obj.tags_meas.apply_transform(@(g_tag) ( ...
                 dataset_params.g_global_offset * g_alignment_transform * g_tag ...
@@ -152,10 +170,10 @@ classdef Measurement < handle & matlab.mixin.Copyable
                     SEn_error = inv(obj.tags_meas(i).g_pose) * g_tag;
                     
                     % Lie-algebraic (R^6) form of the error vector.
-                    v_se3_error = obj.dataset_params.group.algebra.vee(logm(SEn_error));
+                    v_se_n_error = obj.dataset_params.group.algebra.vee(logm(SEn_error));
                     
                     % Compute quardatic cost
-                    cost_i = v_se3_error' * K * v_se3_error;
+                    cost_i = v_se_n_error' * K * v_se_n_error;
                     cost = cost + cost_i; % Running sum of cost
                     
                     % Don't store tag_poses if called by fminsearch
@@ -175,7 +193,7 @@ classdef Measurement < handle & matlab.mixin.Copyable
         
             % Calculate initial value: The h_o vector predicted by the
             % model
-            v_l = obj.f_contraction_model(obj.v_pressure);
+            v_l = obj.dataset_params.f_contraction_model(obj.v_pressure);
             obj.h_o_model = obj.dataset_params.arm_obj.mat_N * v_l;
 
             % Perform optimization
@@ -235,7 +253,7 @@ classdef Measurement < handle & matlab.mixin.Copyable
             end
 
             % Actually plot the arms now
-            v_l = obj.f_contraction_model(obj.v_pressure);
+            v_l = obj.dataset_params.f_contraction_model(obj.v_pressure);
             model_arm.update_arm(v_l, obj.h_o_model);
             %fit_arm.update_arm(v_l, h_o_fit .* [1 0 0 1 1 1]'); % Ignore shearing
             fit_arm.update_arm(v_l, obj.h_o_fit);
@@ -245,6 +263,8 @@ classdef Measurement < handle & matlab.mixin.Copyable
                 obj.gh_tags_meas = obj.tags_meas.plot_tags(ax);
                 obj.gh_tags_fit = obj.tags_fit.plot_tags(ax, "green");
             end
+
+            title(obj.label);
         end
     end
 end

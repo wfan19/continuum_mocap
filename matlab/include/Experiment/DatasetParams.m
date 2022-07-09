@@ -5,6 +5,9 @@ classdef DatasetParams < matlab.mixin.Copyable
 
         dataset_name
 
+
+        f_contraction_model = @contraction_fit_poly;
+
         base_tag
         tags
         g_tag_offset
