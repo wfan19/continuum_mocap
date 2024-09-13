@@ -184,11 +184,11 @@ classdef Measurement < handle & matlab.mixin.Copyable
                 
                 % Add shear-regulating term
                 if obj.dataset_params.group.dof == 3
-                    mat_shear_cost = diag([0, 1, 0]);
+                    mat_K = diag([0, 0, 0]);
                 elseif obj.dataset_params.group.dof == 6
-                    mat_shear_cost = diag([0, 1, 1, 0, 0, 0]);
+                    mat_K = diag([0, 10, 10, 0.001, 0, 0]);
                 end
-%                 cost = cost + h_o' * mat_shear_cost * h_o; % Commented out for now
+                cost = cost + h_o' * mat_K * h_o; % Commented out for now
             end
         
             % Calculate initial value: The h_o vector predicted by the

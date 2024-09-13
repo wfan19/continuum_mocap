@@ -88,16 +88,18 @@ tput bold
 
 for file in "$BAG_DIR"/*
 do
-	if [[ $file =~ \.bag$ ]] && [[ $file =~ $SEARCH_STR ]]; then
+    file_basename=`basename $file` # Save the base name of the file for naming / moving bag files
+    file_basename=${file_basename#"labeled-"} # wtf is this command I have no idea what it does anymore
+
+	if [[ $file =~ \.bag$ ]] && \
+        [[ $file =~ $SEARCH_STR ]] && \
+        [[ ! -f "$OUTPUT_DIR/$MODE_STR-$file_basename" ]] ; then
         # Print realpath if desired, just filename if not
         if [[ "$PRINT_FULL" == "true" ]]; then
             echo "Processing bag file: `realpath $file`" 
         else
             echo "Processing bag file: $file"
         fi
-
-		file_basename=`basename $file` # Save the base name of the file for naming / moving bag files
-		file_basename=${file_basename#"labeled-"}
 
         # Process if not dry run
 		if [[ "$DRY_RUN" == "false" ]]; then

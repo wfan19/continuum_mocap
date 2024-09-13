@@ -28,7 +28,7 @@ bodies:
 
       tags:
         # Default tag for snakes
-        - id: 6
+        - id: 5
           size: 0.031
           pose:
             position:

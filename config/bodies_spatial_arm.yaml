@@ -28,7 +28,7 @@ bodies:
 
       tags:
         # Base tag for snake
-        - id: 0
+        - id: 24
           pose:
             position:
               x: 0

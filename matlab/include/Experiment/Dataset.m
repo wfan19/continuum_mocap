@@ -88,54 +88,180 @@ classdef Dataset < handle & matlab.mixin.Copyable
     
         % TODO: Implement allowing color choices and default blue/red color
         % scheme
-        function obj = plot_dataset_curvature(obj, ax, muscle_pressurized, color, options)
+        function obj = plot_dataset_curvature(obj, ax, muscle_pressurized, options)
             arguments
                 obj Dataset
                 ax = axes(figure())
                 muscle_pressurized = 0
-                color = ""
+                options.color = ""
+                options.linespec = "x"
                 options.true_curvature = false
+                options.median = true
+                options.errorbar = false
+                options.metric = false
             end
 
-            if isa(obj.group, "SE2")
-                if options.true_curvature
-                    f_curvature = @(mat_h_o) abs(mat_h_o(:, 3) ./ mat_h_o(:, 1));
+            function out = calc_curvature(mat_h)
+                if isa(obj.group, "SE2")
+                    out = abs(mat_h(:, 3));
+                elseif isa(obj.group(), "SE3")
+                    out = vecnorm(mat_h(:, 4:6)')';
                 else
-                    f_curvature = @(mat_h_o) abs(mat_h_o(:, 3));
+                    error("Dataset object of unrecognized group")
                 end
-            elseif isa(obj.group, "SE3")
+
+                % Normalize by the arclenght if we are plotting the true
+                % curvature
                 if options.true_curvature
-                    f_curvature = @(mat_h_o) vecnorm(mat_h_o(:, 4:6)')' ./ mat_h_o(:, 1);
-                else
-                    f_curvature = @(mat_h_o) vecnorm(mat_h_o(:, 4:6)')';
+                    out = out ./ mat_h(:, 1);
                 end
             end
-
             if muscle_pressurized == 0 % Find default muscle to pressurize based on tab_meas v_pressure
                 [~, muscle_pressurized] = max(std(obj.tab_measurements.v_pressure));
             end
+
+            pressure_min = obj.tab_measurements.v_pressure(1, muscle_pressurized);
+            pressure_max = obj.tab_measurements.v_pressure(end, muscle_pressurized);
+            t_pressure = linspace(pressure_min, pressure_max, 100);
+
+            % Calculate the continuous version of the model expected values
+            % line.
+            muscle_pressures_zero = zeros(size(obj.tab_measurements.v_pressure, 2) , 1);
+            v_l = obj.dataset_params.f_contraction_model(muscle_pressures_zero);
+            mat_h_o_model = zeros(length(t_pressure), size(obj.tab_measurements.h_o_fit, 2));
+            for i = 1:length(t_pressure)
+                v_l(muscle_pressurized) = obj.dataset_params.f_contraction_model(t_pressure(i));
+                mat_h_o_model(i, :) = (obj.dataset_params.arm_obj.mat_N * v_l)';
+            end
+
+            pressures_meas = obj.tab_measurements.v_pressure(:, muscle_pressurized);
+            h_o_fit = obj.tab_measurements.h_o_fit;
+            % If we want to just plot the medians, find groups by pressure
+            % and find the medians for each of those groups.
+            if options.median
+                [groups, pressures_meas] = findgroups(pressures_meas);
+                h_o_fit = splitapply(@(vals) median(vals, 1), h_o_fit, groups);
+            end
+
+            % If given a color, apply the color and use a darker version
+            % for the model line.
+            if isa(options.color, "string") && options.color == ""
+                meas_color = "b";
+                model_color = "r";
+            elseif isa(options.color, "double")
+                meas_color = options.color;
+                model_color = hsv2rgb([1, 1, 0.75] .* rgb2hsv(meas_color));
+            end
+
+            % Convert psi to kpa if plotting in metric.
+            if options.metric
+                pressures_meas = pressures_meas * 6.89476;
+                t_pressure = t_pressure * 6.89476;
+            end
             
             hold(ax, 'on')
-            plot( ...
-                obj.tab_measurements.v_pressure(:, muscle_pressurized), ...
-                f_curvature(obj.tab_measurements.h_o_fit), ...
-                "bx", "Linewidth", 3 ...
-            )
-            
-            plot( ...
-                obj.tab_measurements.v_pressure(:, muscle_pressurized), ...
-                f_curvature(obj.tab_measurements.h_o_model), ...
-                "r:", "Linewidth", 3 ...
-            )
+            plot(t_pressure, calc_curvature(mat_h_o_model),":", "Linewidth", 5, color=model_color)
+            plot(pressures_meas, calc_curvature(h_o_fit), options.linespec, "Linewidth", 3, "MarkerSize", 10, color=meas_color)
 
             hold(ax, 'off')
-            legend(["Experiment", "Model"], 'location', 'southeast')
+            legend(["Model", "Experiment"], 'location', 'southeast')
             title(obj.dataset_params.dataset_name + ": Pressure vs Curvature")
-            xlabel("Pressure (psi)")
-            ylabel("Curvature (1/m)")
+
+            if options.metric
+                xlabel("Pressure (kPa)")
+                xlim([min(pressures_meas), max(pressures_meas)])
+            else
+                xlabel("Pressure (psi)")
+            end
+            
+            if options.true_curvature
+                ylabel("True Curvature (1/m)")
+            else
+                ylabel("Scaled Curvature (rad)")
+            end
             grid on
         end
     
+        function plot_tip_accuracy(obj, ax, options)
+            arguments
+                obj Dataset
+                ax = axes(figure())
+                options.color = "b"
+                options.linespec = "o:"
+                options.median = true
+                options.normalize = true
+                options.muscle_inflated = -1
+                options.metric = false
+            end
+            if options.muscle_inflated == -1 % Find default muscle to pressurize based on tab_meas v_pressure
+                [~, options.muscle_inflated] = max(std(obj.tab_measurements.v_pressure));
+            end
+
+            numels = size(obj.tab_measurements, 1);
+
+            % Shorthand names for referencing
+            group = obj.group;
+            algebra = obj.group.algebra;
+
+            posn_error = zeros(1, numels);
+            for i = 1:numels
+                fit_tip_posn = algebra.expm(algebra.hat(obj.tab_measurements.h_o_fit(i, :)));
+                model_tip_posn = algebra.expm(algebra.hat(obj.tab_measurements.h_o_model(i, :)));
+
+                % Instead of a proper box-minus (with a log map of the
+                % difference) here we just keep things in the Lie group.
+                %
+                % It's just the norm of the translation so who cares,
+                % right?
+                v_displacement = algebra.vee(inv(fit_tip_posn) * model_tip_posn);
+
+                if length(v_displacement) == 3
+                    posn_error(i) = norm(v_displacement(1:2));
+                elseif length(v_displacement) == 6
+                    posn_error(i) = norm(v_displacement(1:3));
+                end
+            end
+            if options.normalize
+                posn_error = posn_error / obj.dataset_params.f_contraction_model(0) * 100;
+            end
+            
+            outlier_datasets = posn_error > 10 & 1:length(posn_error) > 10;
+            
+            pressures = obj.tab_measurements.v_pressure(~outlier_datasets, options.muscle_inflated);
+            posn_errors = posn_error(~outlier_datasets);
+
+            if options.median
+                [groups, pressures] = findgroups(pressures);
+                posn_errors = splitapply(@median, posn_errors(:), groups(:));
+            end
+
+            if options.metric
+                psi_to_kpa = 6.89476;
+                pressures = pressures * psi_to_kpa;
+            end
+            
+            if options.median
+                plot(ax, pressures, posn_errors, options.linespec, "markersize", 10, "color", options.color, "linewidth", 3, "markerfacecolor", options.color)
+            else
+                plot(ax, pressures, posn_errors, 'x', "color", options.color, "linewidth", 5)
+            end
+
+            if options.metric
+                xlim(ax, [min(pressures), max(pressures)])
+                xlabel(ax, "Pressure (kPa)")
+            else
+                xlabel(ax, "Pressure (psi)")
+            end
+
+            if options.normalize
+                ylabel(ax, "Tip position error")
+                ytickformat("percentage")
+            else
+                ylabel(ax, "Tip position error (m)")
+            end
+            title(ax, "Tip Position Error")
+            grid(ax, "on")
+        end
     end
 
     methods(Static)
